@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: false
+
+caudal:
+  bucket-size-seconds: 60
+  max-nodes: 10000
+  max-edges: 100000
+  min-score-to-keep: 0.000001
+  decay-per-bucket: 0.05
+  deposit-scale: 1.0
+  alpha: 1.0
+  snapshot-interval-seconds: 300
+  snapshots-to-keep: 3
+  wal-retention-days: 7
+  auth:
+    disabled: true
+    api-key: test-key

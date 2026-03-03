@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: caudal
+      POSTGRES_USER: caudal
+      POSTGRES_PASSWORD: caudal
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caudal"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  caudal:
+    image: ghcr.io/caudal-labs/caudal-server:latest
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/caudal
+      SPRING_DATASOURCE_USERNAME: caudal
+      SPRING_DATASOURCE_PASSWORD: caudal
+      CAUDAL_API_KEY: changeme
+      CAUDAL_AUTH_DISABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full
+
+volumes:
+  pgdata:

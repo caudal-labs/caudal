@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn install:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(javap:*)",
+      "Bash(mvn clean install:*)",
+      "Bash(mvn clean test:*)",
+      "Bash(chmod:*)",
+      "Bash(xargs:*)",
+      "Bash(colima status:*)",
+      "Bash(echo:*)",
+      "Bash(docker info:*)",
+      "Bash(docker version:*)",
+      "Bash(docker pull:*)",
+      "Bash(mvn package:*)",
+      "Bash(mvn spring-boot:build-image:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(mvn clean verify:*)",
+      "WebSearch",
+      "Bash(docker compose:*)",
+      "Bash(docker-compose:*)",
+      "Bash(./mvnw test:*)",
+      "Bash(mvn:*)"
+    ]
+  }
+}

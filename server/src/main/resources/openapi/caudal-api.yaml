@@ -1,0 +1,637 @@
+openapi: 3.0.3
+
+info:
+  title: Caudal API
+  version: 0.1.0
+  description: |
+    Caudal is a **temporal relevance memory for AI agents**. It tells an agent
+    what matters *right now*.
+
+    Agents emit interaction events (a user mentioned a topic, a tool was used,
+    a document was retrieved). Caudal continuously reinforces recent activity,
+    naturally forgets what is no longer relevant, and exposes a ranked
+    "attention signal" that agents can query before every decision.
+
+    ## Core concepts
+
+    | Concept | Description |
+    |---------|-------------|
+    | **Space** | An isolated memory namespace. Typically one per user, session, or tenant. Spaces are created implicitly the first time an event references them. |
+    | **Entity** | Any string identifier that participates in events (`user:123`, `topic:cars`, `tool:search`). Entities are graph nodes. |
+    | **Event** | A directed, weighted interaction between two entities (`src` → `dst`). Events reinforce the relationship and both entities' relevance. |
+    | **Focus** | A ranked list of the most relevant entities in a space *right now*, computed from decayed cumulative interaction scores. |
+    | **Next hop** | Given a source entity, the ranked outgoing neighbors — what is most strongly associated with it at this moment. |
+    | **Pathway** | A multi-hop walk through the association graph. Pathways reveal indirect connections and chains of relevance useful for planning, recommendations, and explanations. |
+
+    ## How it works
+
+    Every event reinforces the edge between its `src` and `dst` entities.
+    Over time, all scores decay exponentially — recent interactions dominate
+    while old context fades. Queries read this continuously evolving state
+    without any additional computation step.
+
+    ## Authentication
+
+    All endpoints require a Bearer token in the `Authorization` header:
+
+    ```
+    Authorization: Bearer <your-api-key>
+    ```
+
+    The token is validated against the server-configured API key. Actuator
+    endpoints (`/actuator/*`) are exempt from authentication.
+  contact:
+    name: Caudal Labs
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: /api/v1
+    description: Default server (relative path, resolved against the host)
+
+tags:
+  - name: Events
+    description: |
+      Ingest interaction events into Caudal. Events are the only write
+      operation — everything else is derived. Events are durably persisted
+      to a write-ahead log before acknowledgment.
+  - name: Queries
+    description: |
+      Read the current state of a space's memory. All query endpoints are
+      read-only, lock-free for concurrent callers, and reflect the most
+      recent ingested events.
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # -------------------------------------------------------
+  # POST /events
+  # -------------------------------------------------------
+  /events:
+    post:
+      operationId: ingestEvents
+      tags: [Events]
+      summary: Ingest interaction events
+      description: |
+        Accepts a batch of interaction events and applies them to the
+        specified space. Each event reinforces the directed edge between its
+        `src` and `dst` entities.
+
+        Events are processed atomically per batch — either all events in the
+        request are accepted or the entire request is rejected. The response
+        returns the number of events accepted and the server timestamp
+        (`asOf`) at which they were applied.
+
+        **Idempotency:** Events are append-only. Submitting the same event
+        twice reinforces the relationship twice. Callers that require
+        exactly-once semantics should deduplicate on the client side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+            example:
+              space: "user:123"
+              events:
+                - src: "user:123"
+                  dst: "topic:car-buying"
+                  weight: 2.0
+                  type: "chat"
+                - src: "agent:planner"
+                  dst: "tool:car-comparison"
+                  weight: 1.0
+                  type: "tool_use"
+      responses:
+        '202':
+          description: |
+            Events accepted and persisted. The response confirms how many
+            events were applied and the server-side timestamp bucket.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+              example:
+                accepted: 2
+                asOf: "2026-02-28T10:05:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # -------------------------------------------------------
+  # GET /focus
+  # -------------------------------------------------------
+  /focus:
+    get:
+      operationId: focus
+      tags: [Queries]
+      summary: Get the most relevant entities in a space
+      description: |
+        Returns the top-**k** entities in the space ranked by current
+        relevance. Relevance is a decayed aggregate of all interactions
+        involving each entity — recent activity scores higher, old activity
+        fades toward zero.
+
+        Use this before every agent decision to determine **what to pay
+        attention to**: which topics to prioritize, which tools to prefer,
+        which users are most active.
+      parameters:
+        - name: space
+          in: query
+          required: true
+          description: |
+            The space to query. A space is an isolated memory namespace,
+            typically scoped per user, session, or tenant
+            (e.g. `user:123`, `session:abc`).
+          schema:
+            type: string
+            minLength: 1
+          example: "user:123"
+        - name: k
+          in: query
+          required: false
+          description: |
+            Maximum number of entities to return. The actual count may be
+            lower if the space contains fewer entities.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+          example: 5
+      responses:
+        '200':
+          description: |
+            A ranked list of the most relevant entities, ordered by
+            descending score. Scores are relative and represent decayed
+            cumulative interaction strength.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FocusResponse'
+              example:
+                items:
+                  - id: "topic:car-buying"
+                    score: 0.83
+                  - id: "topic:stroller"
+                    score: 0.61
+                  - id: "topic:cycling"
+                    score: 0.22
+                asOf: "2026-02-28T10:06:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # -------------------------------------------------------
+  # GET /next
+  # -------------------------------------------------------
+  /next:
+    get:
+      operationId: next
+      tags: [Queries]
+      summary: Get the strongest associations from a source entity
+      description: |
+        Returns the top-**k** outgoing neighbors of the given source entity,
+        ranked by current edge strength. This answers the question:
+        *"Given this entity, what is most strongly associated with it
+        right now?"*
+
+        Use this for contextual recommendations, tool selection, or
+        generating follow-up suggestions based on a specific entity.
+      parameters:
+        - name: space
+          in: query
+          required: true
+          description: |
+            The space to query. Must match a space that has received events.
+          schema:
+            type: string
+            minLength: 1
+          example: "user:123"
+        - name: src
+          in: query
+          required: true
+          description: |
+            The source entity to explore outgoing associations from. Must be
+            an entity that has appeared as `src` in at least one ingested
+            event. If the entity has no outgoing edges, the response will
+            contain an empty list.
+          schema:
+            type: string
+            minLength: 1
+          example: "topic:car-buying"
+        - name: k
+          in: query
+          required: false
+          description: |
+            Maximum number of neighbors to return. The actual count may be
+            lower if the entity has fewer outgoing edges.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+          example: 5
+      responses:
+        '200':
+          description: |
+            A ranked list of the source entity's outgoing neighbors,
+            ordered by descending edge score. Scores represent decayed
+            cumulative interaction strength on each edge.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FocusResponse'
+              example:
+                items:
+                  - id: "user:123"
+                    score: 0.83
+                  - id: "tool:car-comparison"
+                    score: 0.45
+                  - id: "topic:stroller"
+                    score: 0.12
+                asOf: "2026-02-28T10:06:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # -------------------------------------------------------
+  # POST /pathways
+  # -------------------------------------------------------
+  /pathways:
+    post:
+      operationId: pathways
+      tags: [Queries]
+      summary: Discover multi-hop pathways from a starting entity
+      description: |
+        Samples probabilistic walks through the association graph starting
+        from the given entity. Returns the most frequently traversed paths
+        and the most visited entities across all walks.
+
+        Pathways reveal **indirect, multi-hop connections** that single-hop
+        queries (`/next`) cannot surface. Use this for:
+
+        - **Planning:** discover chains of relevant entities for multi-step
+          agent plans.
+        - **Recommendations:** find non-obvious connections between entities
+          (e.g. user → topic → brand → product).
+        - **Explanations:** generate human-readable relevance traces
+          ("because you were looking at cars → Toyota → Yaris Cross").
+
+        The `mode` parameter controls the trade-off between latency and
+        thoroughness without exposing internal algorithm parameters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PathwayRequest'
+            example:
+              space: "user:123"
+              start: "user:123"
+              k: 5
+              mode: "balanced"
+      responses:
+        '200':
+          description: |
+            The discovered pathways and most-visited entities. Paths are
+            ordered by descending probability (how frequently the walk
+            followed that exact sequence). Top entities are ordered by
+            visit frequency across all walks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PathwayResponse'
+              example:
+                paths:
+                  - nodes: ["user:123", "topic:car-buying", "brand:toyota", "model:yaris_cross"]
+                    score: 0.34
+                  - nodes: ["user:123", "topic:car-buying", "doc:comparison_guide"]
+                    score: 0.28
+                topEntities:
+                  - id: "topic:car-buying"
+                    score: 0.72
+                  - id: "brand:toyota"
+                    score: 0.51
+                  - id: "model:yaris_cross"
+                    score: 0.44
+                asOf: "2026-02-28T10:06:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+# ---------------------------------------------------------------------------
+# Components
+# ---------------------------------------------------------------------------
+components:
+
+  # ----- Reusable responses -----
+  responses:
+    BadRequest:
+      description: |
+        The request was malformed or failed validation. The `error` field
+        contains a human-readable description of the problem.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "space: must not be blank"
+    Unauthorized:
+      description: |
+        The request is missing a valid `Authorization` header or the
+        provided token does not match the server-configured API key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unauthorized"
+
+  # ----- Schemas -----
+  schemas:
+
+    # === Event ingestion ===
+
+    EventRequest:
+      type: object
+      description: |
+        A batch of interaction events to ingest into a single space.
+        All events in the batch are applied atomically to the same space.
+      required: [space, events]
+      properties:
+        space:
+          type: string
+          minLength: 1
+          description: |
+            Target space identifier. Spaces are isolated memory namespaces —
+            entities and edges in one space are invisible to queries on
+            another. Spaces are created implicitly on first use.
+          example: "user:123"
+        events:
+          type: array
+          minItems: 1
+          description: |
+            One or more interaction events to record. Each event reinforces
+            the directed edge from `src` to `dst`. Order within the batch
+            does not matter.
+          items:
+            $ref: '#/components/schemas/EventItem'
+
+    EventItem:
+      type: object
+      description: |
+        A single interaction event representing a directed association
+        between two entities. The event reinforces the `src` → `dst` edge
+        and increases the relevance of both entities.
+      required: [src, dst]
+      properties:
+        src:
+          type: string
+          minLength: 1
+          description: |
+            Source entity identifier. Use a namespaced format for clarity
+            (e.g. `user:123`, `agent:planner`, `topic:finance`).
+          example: "user:123"
+        dst:
+          type: string
+          minLength: 1
+          description: |
+            Destination entity identifier. The directed edge `src` → `dst`
+            is reinforced by this event. Use the same namespacing convention
+            as `src`.
+          example: "topic:car-buying"
+        weight:
+          type: number
+          format: double
+          default: 1.0
+          description: |
+            Reinforcement strength of this event. Higher values cause the
+            edge to gain more relevance per event. Typical range is
+            `0.1` to `10.0`. Defaults to `1.0` if omitted or non-positive.
+          example: 2.0
+        type:
+          type: string
+          description: |
+            Optional semantic label for the interaction (e.g. `chat`,
+            `tool_use`, `retrieval`, `click`). Stored for auditing and
+            replay but does not affect scoring.
+          example: "chat"
+        timestamp:
+          type: string
+          description: |
+            Optional ISO-8601 instant indicating when the interaction
+            originally occurred (e.g. `2026-02-28T10:05:12Z`). Stored
+            for auditing. Caudal uses server-side arrival time for decay
+            calculations, so this field does not affect scoring.
+          example: "2026-02-28T10:05:12Z"
+        attrs:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Optional free-form key-value metadata attached to the event.
+            Stored for auditing and downstream processing but does not
+            affect scoring.
+          example:
+            channel: "web"
+            sessionId: "sess-abc"
+
+    EventResponse:
+      type: object
+      description: |
+        Acknowledgment returned after a successful event ingestion.
+      properties:
+        accepted:
+          type: integer
+          format: int32
+          description: |
+            The number of events that were accepted and persisted from
+            the batch.
+          example: 2
+        asOf:
+          type: string
+          description: |
+            ISO-8601 instant representing the server-side time bucket at
+            which the events were applied. All decay calculations use this
+            timestamp, not the client-provided `timestamp` field.
+          example: "2026-02-28T10:05:00Z"
+
+    # === Query responses ===
+
+    FocusResponse:
+      type: object
+      description: |
+        A ranked list of entities with their current relevance scores.
+        Used as the response for both `/focus` and `/next` queries.
+      properties:
+        items:
+          type: array
+          description: |
+            Entities ordered by descending score. The list length is at
+            most `k` but may be shorter if the space or entity has fewer
+            results.
+          items:
+            $ref: '#/components/schemas/ScoredItem'
+        asOf:
+          type: string
+          description: |
+            ISO-8601 instant of the current server time bucket. Indicates
+            the point-in-time at which scores were computed, accounting for
+            all decay applied up to this moment.
+          example: "2026-02-28T10:06:00Z"
+
+    ScoredItem:
+      type: object
+      description: |
+        An entity and its current relevance score.
+      properties:
+        id:
+          type: string
+          description: |
+            The entity identifier, matching the `src` or `dst` values from
+            previously ingested events.
+          example: "topic:car-buying"
+        score:
+          type: number
+          format: double
+          description: |
+            Current relevance score after time-based decay. Higher means
+            more relevant right now. Scores are non-negative and decrease
+            over time as interactions age. The absolute magnitude depends on
+            event weights and recency; compare scores within the same
+            response to determine relative importance.
+          example: 0.83
+
+    # === Pathways ===
+
+    PathwayRequest:
+      type: object
+      description: |
+        Request parameters for pathway discovery. Caudal samples
+        probabilistic walks through the association graph and returns the
+        most common paths and visited entities.
+      required: [space, start]
+      properties:
+        space:
+          type: string
+          minLength: 1
+          description: |
+            The space to explore. Must match a space that has received
+            events.
+          example: "user:123"
+        start:
+          type: string
+          minLength: 1
+          description: |
+            The entity to start all walks from. Typically the current user,
+            active topic, or any entity whose indirect associations you want
+            to discover.
+          example: "user:123"
+        k:
+          type: integer
+          format: int32
+          default: 10
+          description: |
+            Maximum number of top paths and top entities to return.
+            Defaults to `10` if omitted or non-positive.
+          example: 5
+        mode:
+          type: string
+          default: balanced
+          enum: [fast, balanced, deep]
+          description: |
+            Controls the trade-off between response latency and exploration
+            thoroughness.
+
+            | Mode | Behavior |
+            |------|----------|
+            | `fast` | Fewer samples, shorter walks. Best for low-latency use cases where approximate results are acceptable. |
+            | `balanced` | Moderate sampling depth. Good default for most agent workflows. Used when `mode` is omitted. |
+            | `deep` | More samples, longer walks. Best for planning, root-cause analysis, or when discovering distant associations matters. |
+
+    PathwayResponse:
+      type: object
+      description: |
+        Results of pathway discovery, containing the most frequently
+        traversed paths and the most visited entities across all sampled
+        walks.
+      properties:
+        paths:
+          type: array
+          description: |
+            The top-**k** most frequently traversed paths, ordered by
+            descending score. Each path is an ordered sequence of entity
+            identifiers representing one walk through the graph.
+          items:
+            $ref: '#/components/schemas/PathItem'
+        topEntities:
+          type: array
+          description: |
+            The top-**k** most frequently visited entities across all
+            walks, ordered by descending visit frequency. Useful for
+            identifying the most important entities reachable from the
+            starting point, regardless of the specific path taken.
+          items:
+            $ref: '#/components/schemas/ScoredItem'
+        asOf:
+          type: string
+          description: |
+            ISO-8601 instant of the current server time bucket at which
+            the pathway analysis was performed.
+          example: "2026-02-28T10:06:00Z"
+
+    PathItem:
+      type: object
+      description: |
+        A single discovered pathway — an ordered sequence of entities
+        representing one frequently traversed walk through the
+        association graph.
+      properties:
+        nodes:
+          type: array
+          description: |
+            Ordered list of entity identifiers along the path. The first
+            element is always the `start` entity from the request. Each
+            subsequent element was reached by following the highest-weight
+            outgoing edge probabilistically.
+          items:
+            type: string
+          example: ["user:123", "topic:car-buying", "brand:toyota", "model:yaris_cross"]
+        score:
+          type: number
+          format: double
+          description: |
+            The fraction of sampled walks that followed this exact path.
+            Ranges from `0.0` to `1.0`. A score of `0.34` means 34% of
+            all walks traversed this specific sequence of entities.
+          example: 0.34
+
+    # === Errors ===
+
+    ErrorResponse:
+      type: object
+      description: |
+        Standard error envelope returned for all `4xx` responses.
+      properties:
+        error:
+          type: string
+          description: |
+            A human-readable error message describing what went wrong.
+            For validation errors, this includes the field name and
+            constraint that failed.
+          example: "space: must not be blank"
+
+  # ----- Security -----
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API key authentication. Pass the server-configured API key as a
+        Bearer token. The key can also be sent with the `Token` prefix
+        (i.e. `Authorization: Token <key>`).
+
+security:
+  - BearerAuth: []

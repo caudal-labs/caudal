@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: caudal
+  datasource:
+    url: jdbc:postgresql://localhost:5432/caudal
+    username: caudal
+    password: caudal
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+caudal:
+  bucket-size-seconds: 30
+  max-nodes: 10000
+  max-edges: 100000
+  min-score-to-keep: 0.000001
+  decay-per-bucket: 0.0253
+  deposit-scale: 1.0
+  alpha: 1.0
+  pathways:
+    fast:
+      ants: 50
+      max-steps: 4
+    balanced:
+      ants: 200
+      max-steps: 6
+    deep:
+      ants: 500
+      max-steps: 10
+  snapshot-interval-seconds: 300
+  snapshots-to-keep: 3
+  wal-retention-days: 7
+  auth:
+    disabled: false
+    api-key: ${CAUDAL_API_KEY:changeme}

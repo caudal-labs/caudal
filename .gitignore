@@ -1,0 +1,41 @@
+# === Build output ===
+target/
+
+# === IntelliJ IDEA ===
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# === Eclipse ===
+.project
+.classpath
+.settings/
+
+# === VS Code ===
+.vscode/
+
+# === OS files ===
+.DS_Store
+Thumbs.db
+
+# === Maven ===
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# === Environment & secrets ===
+.env
+.env.*
+*.pem
+*.key
+
+# === Logs ===
+*.log
+logs/
+
+# === Spring Boot ===
+spring-shell.log
