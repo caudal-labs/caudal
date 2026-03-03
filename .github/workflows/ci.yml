@@ -62,7 +62,7 @@ jobs:
           cache: maven
 
       - name: Run Testcontainers integration tests
-        run: mvn clean verify -pl server -B -Dgroups=testcontainers
+        run: mvn clean verify -pl server -am -B -Dgroups=testcontainers
 
   docker:
     needs: [build, integration-tests]
