@@ -65,7 +65,7 @@ class PersistenceIntegrationTest {
                     {
                       "space": "wal-test",
                       "events": [
-                        {"src": "x", "dst": "y", "weight": 1.0}
+                        {"src": "x", "dst": "y", "intensity": 1.0}
                       ]
                     }
                     """))
@@ -85,7 +85,7 @@ class PersistenceIntegrationTest {
                     {
                       "space": "snap-test",
                       "events": [
-                        {"src": "a", "dst": "b", "weight": 5.0}
+                        {"src": "a", "dst": "b", "intensity": 5.0}
                       ]
                     }
                     """))
@@ -107,9 +107,9 @@ class PersistenceIntegrationTest {
                     {
                       "space": "rt-test",
                       "events": [
-                        {"src": "agent:1", "dst": "topic:ml", "weight": 3.0},
-                        {"src": "agent:1", "dst": "topic:java", "weight": 1.0},
-                        {"src": "agent:2", "dst": "topic:ml", "weight": 2.0}
+                        {"src": "agent:1", "dst": "topic:ml", "intensity": 3.0},
+                        {"src": "agent:1", "dst": "topic:java", "intensity": 1.0},
+                        {"src": "agent:2", "dst": "topic:ml", "intensity": 2.0}
                       ]
                     }
                     """))

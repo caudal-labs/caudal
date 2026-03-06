@@ -38,9 +38,9 @@ class QueryControllerTest {
                 {
                   "space": "qtest",
                   "events": [
-                    {"src": "a", "dst": "b", "weight": 3.0},
-                    {"src": "a", "dst": "c", "weight": 1.0},
-                    {"src": "b", "dst": "d", "weight": 2.0}
+                    {"src": "a", "dst": "b", "intensity": 3.0},
+                    {"src": "a", "dst": "c", "intensity": 1.0},
+                    {"src": "b", "dst": "d", "intensity": 2.0}
                   ]
                 }
                 """));

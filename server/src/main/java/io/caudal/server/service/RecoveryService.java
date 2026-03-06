@@ -70,7 +70,7 @@ public class RecoveryService {
         if (!walEvents.isEmpty()) {
             List<Event> coreEvents = walEvents.stream()
                     .map(e -> new Event(
-                            e.src(), e.dst(), e.weight(), e.type(),
+                            e.src(), e.dst(), e.intensity(), e.type(),
                             e.timestamp() != null ? Instant.parse(e.timestamp()) : null,
                             e.attrs() != null ? e.attrs() : Map.of()
                     ))

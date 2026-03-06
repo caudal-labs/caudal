@@ -37,8 +37,8 @@ class EventControllerTest {
                     {
                       "space": "test-space",
                       "events": [
-                        {"src": "user:alice", "dst": "topic:java", "weight": 1.0, "type": "interaction"},
-                        {"src": "user:bob", "dst": "topic:spring", "weight": 2.0}
+                        {"src": "user:alice", "dst": "topic:java", "intensity": 1.0, "type": "interaction"},
+                        {"src": "user:bob", "dst": "topic:spring", "intensity": 2.0}
                       ]
                     }
                     """))
@@ -53,7 +53,7 @@ class EventControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "events": [{"src": "a", "dst": "b", "weight": 1.0}]
+                      "events": [{"src": "a", "dst": "b", "intensity": 1.0}]
                     }
                     """))
             .andExpect(status().isBadRequest());
@@ -80,7 +80,7 @@ class EventControllerTest {
                     {
                       "space": "focus-test",
                       "events": [
-                        {"src": "agent:1", "dst": "entity:foo", "weight": 5.0}
+                        {"src": "agent:1", "dst": "entity:foo", "intensity": 5.0}
                       ]
                     }
                     """))

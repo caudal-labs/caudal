@@ -18,7 +18,7 @@ public final class MemoryEngine {
 
             applyDecay(edge, currentBucket, config.decayPerBucket());
 
-            edge.setScore(edge.score() + event.weight() * config.depositScale());
+            edge.setScore(edge.score() + event.intensity() * config.depositScale());
             edge.setLastUpdatedBucket(currentBucket);
             edge.incrementRawCount();
         }

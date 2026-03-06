@@ -13,15 +13,15 @@ public record EventRequest(
     public record EventItem(
         @NotBlank String src,
         @NotBlank String dst,
-        double weight,
+        double intensity,
         String type,
         String timestamp,
         java.util.Map<String, String> attrs
     ) {
 
         public EventItem {
-            if (weight <= 0) {
-                weight = 1.0;
+            if (intensity <= 0) {
+                intensity = 1.0;
             }
         }
     }

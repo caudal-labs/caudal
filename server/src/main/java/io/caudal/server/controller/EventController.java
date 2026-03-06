@@ -40,7 +40,7 @@ public class EventController implements EventsApi {
                     .map(item -> new Event(
                             item.src(),
                             item.dst(),
-                            item.weight(),
+                            item.intensity(),
                             item.type(),
                             item.timestamp() != null ? Instant.parse(item.timestamp()) : null,
                             item.attrs() != null ? item.attrs() : Map.of()
