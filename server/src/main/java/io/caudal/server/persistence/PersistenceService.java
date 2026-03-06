@@ -36,7 +36,7 @@ public class PersistenceService {
     }
 
     public void appendWal(String spaceId, List<EventRequest.EventItem> events) {
-        String sql = "INSERT INTO event_log (space_id, event_timestamp, src, dst, weight, type, attrs) " +
+        String sql = "INSERT INTO event_log (space_id, event_timestamp, src, dst, intensity, type, attrs) " +
             "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         List<Object[]> batchArgs = events.stream()
@@ -45,7 +45,7 @@ public class PersistenceService {
                 e.timestamp(),
                 e.src(),
                 e.dst(),
-                e.weight(),
+                e.intensity(),
                 e.type(),
                 e.attrs() != null ? toJson(e.attrs()) : null
             })
@@ -98,12 +98,12 @@ public class PersistenceService {
 
     public List<EventRequest.EventItem> replayWalAfter(String spaceId, Instant after) {
         return jdbc.query(
-            "SELECT src, dst, weight, type, event_timestamp, attrs FROM event_log " +
+            "SELECT src, dst, intensity, type, event_timestamp, attrs FROM event_log " +
                 "WHERE space_id = ? AND arrived_at > ? ORDER BY arrived_at",
             (rs, rowNum) -> new EventRequest.EventItem(
                 rs.getString("src"),
                 rs.getString("dst"),
-                rs.getDouble("weight"),
+                rs.getDouble("intensity"),
                 rs.getString("type"),
                 rs.getString("event_timestamp"),
                 null

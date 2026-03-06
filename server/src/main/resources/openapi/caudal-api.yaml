@@ -99,11 +99,11 @@ paths:
               events:
                 - src: "user:123"
                   dst: "topic:car-buying"
-                  weight: 2.0
+                  intensity: 2.0
                   type: "chat"
                 - src: "agent:planner"
                   dst: "tool:car-comparison"
-                  weight: 1.0
+                  intensity: 1.0
                   type: "tool_use"
       responses:
         '202':
@@ -402,14 +402,15 @@ components:
             is reinforced by this event. Use the same namespacing convention
             as `src`.
           example: "topic:car-buying"
-        weight:
+        intensity:
           type: number
           format: double
           default: 1.0
           description: |
-            Reinforcement strength of this event. Higher values cause the
-            edge to gain more relevance per event. Typical range is
-            `0.1` to `10.0`. Defaults to `1.0` if omitted or non-positive.
+            Reinforcement intensity of this event — how impactful or
+            memorable it is. Higher values cause the edge to gain more
+            relevance per event. Typical range is `0.1` to `10.0`.
+            Defaults to `1.0` if omitted or non-positive.
           example: 2.0
         type:
           type: string
@@ -500,7 +501,7 @@ components:
             Current relevance score after time-based decay. Higher means
             more relevant right now. Scores are non-negative and decrease
             over time as interactions age. The absolute magnitude depends on
-            event weights and recency; compare scores within the same
+            event intensities and recency; compare scores within the same
             response to determine relative importance.
           example: 0.83
 
@@ -594,7 +595,7 @@ components:
           description: |
             Ordered list of entity identifiers along the path. The first
             element is always the `start` entity from the request. Each
-            subsequent element was reached by following the highest-weight
+            subsequent element was reached by following the highest-intensity
             outgoing edge probabilistically.
           items:
             type: string

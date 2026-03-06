@@ -13,12 +13,12 @@ curl -s -X POST "$BASE/api/v1/events" \
   -d '{
     "space": "demo",
     "events": [
-      {"src": "user:alice", "dst": "topic:machine-learning", "weight": 3.0, "type": "interaction"},
-      {"src": "user:alice", "dst": "topic:python", "weight": 2.0, "type": "interaction"},
-      {"src": "user:bob", "dst": "topic:machine-learning", "weight": 5.0, "type": "interaction"},
-      {"src": "user:bob", "dst": "topic:data-pipelines", "weight": 1.0, "type": "interaction"},
-      {"src": "user:carol", "dst": "topic:python", "weight": 4.0, "type": "interaction"},
-      {"src": "user:carol", "dst": "topic:machine-learning", "weight": 1.0, "type": "interaction"}
+      {"src": "user:alice", "dst": "topic:machine-learning", "intensity": 3.0, "type": "interaction"},
+      {"src": "user:alice", "dst": "topic:python", "intensity": 2.0, "type": "interaction"},
+      {"src": "user:bob", "dst": "topic:machine-learning", "intensity": 5.0, "type": "interaction"},
+      {"src": "user:bob", "dst": "topic:data-pipelines", "intensity": 1.0, "type": "interaction"},
+      {"src": "user:carol", "dst": "topic:python", "intensity": 4.0, "type": "interaction"},
+      {"src": "user:carol", "dst": "topic:machine-learning", "intensity": 1.0, "type": "interaction"}
     ]
   }' | jq .
 

@@ -85,7 +85,7 @@ curl -X POST http://localhost:8080/api/v1/events \
       "src": "user:123",
       "dst": "topic:car-buying",
       "type": "chat",
-      "weight": 2.0
+      "intensity": 2.0
     },
     {
       "space": "user:123",
@@ -93,7 +93,7 @@ curl -X POST http://localhost:8080/api/v1/events \
       "src": "agent:planner",
       "dst": "tool:car-comparison",
       "type": "tool_use",
-      "weight": 1.0
+      "intensity": 1.0
     }
   ]'
 ```

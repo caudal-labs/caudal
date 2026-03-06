@@ -86,7 +86,7 @@ class MemoryEngineTest {
         }
 
         @Test
-        void reinforcement_weightScaling() {
+        void reinforcement_intensityScaling() {
             SpaceConfig config = new SpaceConfig(1000, 10000, 1e-9, 0.05, 2.0, 1.0);
             SpaceState space = new SpaceState("test", config);
 
