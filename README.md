@@ -78,24 +78,25 @@ Whenever the agent observes meaningful activity, it sends events:
 curl -X POST http://localhost:8080/api/v1/events \
   -H "Authorization: Bearer <api_key>" \
   -H "Content-Type: application/json" \
-  -d '[
-    {
-      "space": "user:123",
-      "timestamp": "2026-02-28T10:05:12Z",
-      "src": "user:123",
-      "dst": "topic:car-buying",
-      "type": "chat",
-      "intensity": 2.0
-    },
-    {
-      "space": "user:123",
-      "timestamp": "2026-02-28T10:05:30Z",
-      "src": "agent:planner",
-      "dst": "tool:car-comparison",
-      "type": "tool_use",
-      "intensity": 1.0
-    }
-  ]'
+  -d '{
+    "space": "user:123",
+    "events": [
+      {
+        "timestamp": "2026-02-28T10:05:12Z",
+        "src": "user:123",
+        "dst": "topic:car-buying",
+        "type": "chat",
+        "intensity": 2.0
+      },
+      {
+        "timestamp": "2026-02-28T10:05:30Z",
+        "src": "agent:planner",
+        "dst": "tool:car-comparison",
+        "type": "tool_use",
+        "intensity": 1.0
+      }
+    ]
+  }'
 ```
 
 Caudal interprets these as **signals of attention**, not facts.
