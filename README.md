@@ -284,6 +284,37 @@ The image is published to GHCR as `ghcr.io/caudal-labs/caudal-server`.
 
 ---
 
+## Claude Code Skill
+
+Caudal ships a **Claude Code skill** (`caudal-attention`) that integrates Caudal's temporal attention signal directly into Claude's workflow. Once installed, Claude emits events as it works and queries what matters now before every decision — so focus emerges from real interactions and naturally fades when no longer relevant, instead of relying on heuristics or treating all context as equally important.
+
+### Install in Claude Code
+
+```bash
+/plugin install caudal-attention@caudal-skills
+```
+
+### Set environment variables
+
+The skill connects to your Caudal instance via environment variables:
+
+```bash
+export CAUDAL_URL=http://localhost:8080   # your Caudal server URL
+export CAUDAL_API_KEY=your-api-key        # your API key (omit if auth is disabled)
+```
+
+### Recommended: add to your project's `CLAUDE.md`
+
+For reliable activation at the start of every session, add this line to your project's `CLAUDE.md`:
+
+```
+At the start of every conversation, invoke the `caudal-attention` skill before doing anything else.
+```
+
+This ensures Claude uses Caudal's temporal memory in every session, not just when it happens to notice the skill trigger.
+
+---
+
 ## Contributing
 
 We welcome issues and PRs! Please read `CONTRIBUTING.md` and follow the code style and test guidelines. Good first issues are labeled in the tracker.
