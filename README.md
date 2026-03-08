@@ -288,13 +288,9 @@ The image is published to GHCR as `ghcr.io/caudal-labs/caudal-server`.
 
 Caudal ships a **Claude Code skill** (`caudal-attention`) that integrates Caudal's temporal attention signal directly into Claude's workflow. Once installed, Claude emits events as it works and queries what matters now before every decision — so focus emerges from real interactions and naturally fades when no longer relevant, instead of relying on heuristics or treating all context as equally important.
 
-### Install via plugin marketplace
+### Install in Claude Code
 
 ```bash
-# 1) Register the Caudal marketplace (one-time)
-/plugin marketplace add caudal-labs/caudal
-
-# 2) Install the skill
 /plugin install caudal-attention@caudal-skills
 ```
 
