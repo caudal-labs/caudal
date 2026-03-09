@@ -169,6 +169,56 @@ Use pathway results to:
 - Understand why a topic is relevant (trace the path back)
 - Find non-obvious dependencies or related concepts
 
+## When to modulate attention
+
+Sometimes the right response isn't to emit more events — it's to directly
+control what gets attention. Use modulations when:
+
+| Situation | Action |
+|-----------|--------|
+| User says "let's move on from X" | Suppress X: `{"entity": "topic:X", "attention": 0.1, "decay": 50}` |
+| User explicitly prioritizes Y | Amplify Y: `{"entity": "topic:Y", "attention": 3.0, "decay": 50}` |
+| A topic keeps surfacing but is no longer relevant | Suppress it: `{"entity": "topic:stale", "attention": 0.0}` |
+| User returns to a previously-suppressed topic | Reset it: `{"entity": "topic:X", "attention": 1.0}` |
+
+**Embed modulations in your event calls** for zero extra latency:
+
+```bash
+curl -s -X POST "$CAUDAL_URL/api/v1/events" \
+  -H "Authorization: Bearer $CAUDAL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "space": "'$SPACE'",
+    "events": [
+      {"src": "user:alice", "dst": "topic:math", "intensity": 5.0, "type": "discussion"}
+    ],
+    "modulations": [
+      {"entity": "topic:bikes", "attention": 0.1, "decay": 50}
+    ]
+  }'
+```
+
+Or use the standalone endpoint when you only need to steer attention:
+
+```bash
+curl -s -X POST "$CAUDAL_URL/api/v1/modulate" \
+  -H "Authorization: Bearer $CAUDAL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "space": "'$SPACE'",
+    "modulations": [
+      {"entity": "topic:bikes", "attention": 0.1, "decay": 50},
+      {"entity": "topic:math", "attention": 3.0, "decay": 50}
+    ]
+  }'
+```
+
+**Key principles:**
+- Modulations are **top-down** — they don't change the memory, only what surfaces
+- A `decay` of 50 means the modulation fades to half-strength after 50 events
+- Omit `decay` (or set to 0) for persistent modulation until explicitly reset
+- Setting `attention: 1.0` removes the modulation entirely
+
 ## Integration pattern
 
 ### Setup: Check if Caudal is available

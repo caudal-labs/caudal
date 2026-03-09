@@ -73,6 +73,103 @@ class EventControllerTest {
     }
 
     @Test
+    void ingestEvents_withModulations_returnsAccepted() throws Exception {
+        mockMvc.perform(post("/api/v1/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "space": "mod-test",
+                      "events": [
+                        {"src": "user:alice", "dst": "topic:bikes", "intensity": 5.0},
+                        {"src": "user:alice", "dst": "topic:math", "intensity": 5.0}
+                      ],
+                      "modulations": [
+                        {"entity": "topic:bikes", "attention": 0.1, "decay": 50}
+                      ]
+                    }
+                    """))
+            .andExpect(status().isAccepted())
+            .andExpect(jsonPath("$.accepted").value(2));
+    }
+
+    @Test
+    void ingestEvents_withModulations_affectsFocus() throws Exception {
+        mockMvc.perform(post("/api/v1/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "space": "mod-focus-test",
+                      "events": [
+                        {"src": "user:x", "dst": "topic:suppress-me", "intensity": 5.0},
+                        {"src": "user:x", "dst": "topic:keep-me", "intensity": 5.0}
+                      ],
+                      "modulations": [
+                        {"entity": "topic:suppress-me", "attention": 0.0}
+                      ]
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        mockMvc.perform(get("/api/v1/focus")
+                .param("space", "mod-focus-test")
+                .param("k", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.id == 'topic:suppress-me')]").doesNotExist());
+    }
+
+    @Test
+    void modulate_standaloneEndpoint_returnsOk() throws Exception {
+        mockMvc.perform(post("/api/v1/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "space": "standalone-mod",
+                      "events": [{"src": "a", "dst": "b", "intensity": 1.0}]
+                    }
+                    """))
+            .andExpect(status().isAccepted());
+
+        mockMvc.perform(post("/api/v1/modulate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "space": "standalone-mod",
+                      "modulations": [
+                        {"entity": "b", "attention": 0.5, "decay": 100}
+                      ]
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.applied").value(1))
+            .andExpect(jsonPath("$.asOf").isNotEmpty());
+    }
+
+    @Test
+    void modulate_missingSpace_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/modulate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "modulations": [{"entity": "x", "attention": 0.5}]
+                    }
+                    """))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void modulate_emptyModulations_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/modulate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "space": "test",
+                      "modulations": []
+                    }
+                    """))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void ingestThenFocus_returnsIngested() throws Exception {
         mockMvc.perform(post("/api/v1/events")
                 .contentType(MediaType.APPLICATION_JSON)

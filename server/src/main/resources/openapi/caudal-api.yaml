@@ -53,9 +53,9 @@ servers:
 tags:
   - name: Events
     description: |
-      Ingest interaction events into Caudal. Events are the only write
-      operation — everything else is derived. Events are durably persisted
-      to a write-ahead log before acknowledgment.
+      Write operations: ingest interaction events and apply attention
+      modulations. Events are the primary write — modulations provide
+      top-down attention control. Both are durably persisted.
   - name: Queries
     description: |
       Read the current state of a space's memory. All query endpoints are
@@ -105,6 +105,10 @@ paths:
                   dst: "tool:car-comparison"
                   intensity: 1.0
                   type: "tool_use"
+              modulations:
+                - entity: "topic:old-stuff"
+                  attention: 0.1
+                  decay: 50
       responses:
         '202':
           description: |
@@ -116,6 +120,65 @@ paths:
                 $ref: '#/components/schemas/EventResponse'
               example:
                 accepted: 2
+                asOf: "2026-02-28T10:05:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # -------------------------------------------------------
+  # POST /modulate
+  # -------------------------------------------------------
+  /modulate:
+    post:
+      operationId: modulate
+      tags: [Events]
+      summary: Apply attention modulations to a space
+      description: |
+        Applies top-down attention modulations to entities in the specified
+        space. Modulations suppress or amplify how much attention an entity
+        receives in query results (`/focus`, `/next`, `/pathways`) without
+        altering the underlying memory (edges).
+
+        **Key concepts:**
+        - `attention < 1.0` suppresses (e.g. `0.1` = 10% of normal score)
+        - `attention > 1.0` amplifies (e.g. `3.0` = triple the score)
+        - `attention = 1.0` resets any existing modulation (returns to normal)
+        - `decay` controls how many events until the modulation fades to half strength
+
+        **Metaphor:** Think of this as a teacher saying *"stop thinking about
+        bikes, focus on math."* The memory of bikes remains intact — only its
+        prominence in attention queries is reduced.
+
+        **Prefer embedding modulations in `POST /events`** when you are
+        already sending events. This endpoint exists for cases where you need
+        to modulate attention without any new events to emit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModulateRequest'
+            example:
+              space: "project:my-app"
+              modulations:
+                - entity: "topic:bikes"
+                  attention: 0.1
+                  decay: 50
+                - entity: "topic:math"
+                  attention: 3.0
+                  decay: 100
+      responses:
+        '200':
+          description: |
+            Modulations applied successfully. The response confirms how many
+            modulations were applied and the current server timestamp.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModulateResponse'
+              example:
+                applied: 2
                 asOf: "2026-02-28T10:05:00Z"
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -378,6 +441,19 @@ components:
             does not matter.
           items:
             $ref: '#/components/schemas/EventItem'
+        modulations:
+          type: array
+          description: |
+            Optional attention modulations to apply atomically with these
+            events. Modulations control top-down attention — suppressing
+            or amplifying how much specific entities appear in query
+            results — without altering the underlying memory (edges).
+
+            Including modulations here is equivalent to calling
+            `POST /modulate` separately, but avoids an extra network
+            round-trip. Modulations are applied after events are processed.
+          items:
+            $ref: '#/components/schemas/ModulationItem'
 
     EventItem:
       type: object
@@ -608,6 +684,106 @@ components:
             Ranges from `0.0` to `1.0`. A score of `0.34` means 34% of
             all walks traversed this specific sequence of entities.
           example: 0.34
+
+    # === Modulation ===
+
+    ModulationItem:
+      type: object
+      description: |
+        A top-down attention modulation for a single entity. Modulations
+        control how prominently an entity appears in query results without
+        altering the underlying memory (edges).
+
+        **Examples:**
+        - Suppress: `{"entity": "topic:bikes", "attention": 0.1, "decay": 50}`
+          — bikes' score drops to 10%, fading back to normal after ~50 events.
+        - Amplify: `{"entity": "topic:math", "attention": 3.0, "decay": 100}`
+          — math's score triples, fading back to normal after ~100 events.
+        - Reset: `{"entity": "topic:bikes", "attention": 1.0}`
+          — immediately removes any existing modulation for bikes.
+      required: [entity, attention]
+      properties:
+        entity:
+          type: string
+          minLength: 1
+          description: |
+            The entity to modulate. Must match an entity identifier used
+            in events (e.g. `topic:bikes`, `user:123`, `file:src/Main.java`).
+            If the entity does not exist yet, the modulation is stored and
+            takes effect when the entity appears in future events.
+          example: "topic:bikes"
+        attention:
+          type: number
+          format: double
+          description: |
+            Attention multiplier. Controls how much this entity's scores
+            are amplified or suppressed in query results (`/focus`, `/next`,
+            `/pathways`).
+
+            | Value | Effect |
+            |-------|--------|
+            | `0.0` | Fully suppress — entity will not appear in results |
+            | `0.1` | Strongly suppress — 10% of normal score |
+            | `1.0` | Neutral — no modulation (resets any existing modulation) |
+            | `2.0` | Double the entity's score |
+            | `5.0` | 5x amplification |
+
+            Must be non-negative. The underlying memory is never altered —
+            only the entity's visibility in queries changes.
+          example: 0.1
+        decay:
+          type: integer
+          format: int64
+          description: |
+            Number of events (across all entities in this space) until the
+            modulation fades to half its original strength. After `decay`
+            events, a modulation of `0.1` will be at `0.55` (halfway back
+            to `1.0`). After `2 * decay` events, it will be at `0.775`,
+            and so on — smoothly returning to neutral.
+
+            If omitted or set to `0`, the modulation persists indefinitely
+            until explicitly reset (by setting `attention` to `1.0`).
+          example: 50
+
+    ModulateRequest:
+      type: object
+      description: |
+        A request to apply attention modulations to entities in a space.
+        All modulations are applied atomically.
+      required: [space, modulations]
+      properties:
+        space:
+          type: string
+          minLength: 1
+          description: |
+            Target space identifier. The space is created implicitly if it
+            does not yet exist. Modulations are scoped to this space.
+          example: "project:my-app"
+        modulations:
+          type: array
+          minItems: 1
+          description: |
+            One or more attention modulations to apply. If multiple
+            modulations target the same entity, the last one wins.
+          items:
+            $ref: '#/components/schemas/ModulationItem'
+
+    ModulateResponse:
+      type: object
+      description: |
+        Acknowledgment returned after attention modulations are applied.
+      properties:
+        applied:
+          type: integer
+          format: int32
+          description: |
+            The number of modulations that were applied.
+          example: 2
+        asOf:
+          type: string
+          description: |
+            ISO-8601 instant representing the current server timestamp.
+          example: "2026-02-28T10:05:00Z"
 
     # === Errors ===
 

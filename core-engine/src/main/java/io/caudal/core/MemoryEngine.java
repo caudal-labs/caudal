@@ -24,6 +24,22 @@ public final class MemoryEngine {
         }
 
         prune(space, currentBucket);
+        space.incrementEventCounter(events.size());
+        pruneModulations(space);
+    }
+
+    public void applyModulations(SpaceState space, List<Modulation> modulations) {
+        long currentCount = space.eventCounter();
+        for (Modulation mod : modulations) {
+            if (Math.abs(mod.attention() - 1.0) < 1e-9) {
+                space.removeModulation(mod.entity());
+            } else {
+                Modulation resolved = new Modulation(
+                    mod.entity(), mod.attention(), mod.decay(), currentCount
+                );
+                space.putModulation(resolved);
+            }
+        }
     }
 
     public List<FocusItem> focus(SpaceState space, int k, long currentBucket) {
@@ -38,7 +54,11 @@ public final class MemoryEngine {
         }
 
         return nodeScores.entrySet().stream()
-            .map(e -> new FocusItem(e.getKey(), e.getValue()))
+            .map(e -> {
+                double modulated = e.getValue() * effectiveAttention(space, e.getKey());
+                return new FocusItem(e.getKey(), modulated);
+            })
+            .filter(item -> item.score() > 0)
             .sorted()
             .limit(k)
             .toList();
@@ -54,8 +74,10 @@ public final class MemoryEngine {
             .map(key -> {
                 EdgeState edge = space.getEdge(key);
                 double decayed = decayedScore(edge, currentBucket, space.config().decayPerBucket());
-                return new NextHopItem(key.dst(), decayed);
+                double modulated = decayed * effectiveAttention(space, key.dst());
+                return new NextHopItem(key.dst(), modulated);
             })
+            .filter(item -> item.score() > 0)
             .sorted()
             .limit(k)
             .toList();
@@ -83,10 +105,9 @@ public final class MemoryEngine {
                 double totalWeight = 0;
                 for (EdgeKey key : outgoing) {
                     EdgeState edge = space.getEdge(key);
-                    double w = Math.pow(
-                        decayedScore(edge, currentBucket, space.config().decayPerBucket()),
-                        alpha
-                    );
+                    double raw = decayedScore(edge, currentBucket, space.config().decayPerBucket());
+                    double modulated = raw * effectiveAttention(space, key.dst());
+                    double w = Math.pow(Math.max(modulated, 0), alpha);
                     weights.add(w);
                     totalWeight += w;
                 }
@@ -141,7 +162,14 @@ public final class MemoryEngine {
             })
             .toList();
 
-        return new SpaceSnapshot(space.spaceId(), currentBucket, edgeData);
+        List<SpaceSnapshot.ModulationData> modData = space.modulations().values().stream()
+            .filter(m -> !m.isNeutral(space.eventCounter(), 0.001))
+            .map(m -> new SpaceSnapshot.ModulationData(
+                m.entity(), m.attention(), m.decay(), m.appliedAtEventCount()
+            ))
+            .toList();
+
+        return new SpaceSnapshot(space.spaceId(), currentBucket, edgeData, modData, space.eventCounter());
     }
 
     public SpaceState restore(SpaceSnapshot snap, SpaceConfig config) {
@@ -152,6 +180,14 @@ public final class MemoryEngine {
             edge.setScore(ed.score());
             edge.setLastUpdatedBucket(ed.lastUpdatedBucket());
         }
+        if (snap.modulations() != null) {
+            for (SpaceSnapshot.ModulationData md : snap.modulations()) {
+                space.putModulation(new Modulation(
+                    md.entity(), md.attention(), md.decay(), md.appliedAtEventCount()
+                ));
+            }
+        }
+        space.incrementEventCounter((int) snap.eventCounter());
         return space;
     }
 
@@ -170,6 +206,22 @@ public final class MemoryEngine {
             return edge.score();
         }
         return edge.score() * Math.pow(1.0 - decayPerBucket, delta);
+    }
+
+    private double effectiveAttention(SpaceState space, String entity) {
+        Modulation mod = space.modulations().get(entity);
+        if (mod == null) {
+            return 1.0;
+        }
+        return mod.effectiveAttention(space.eventCounter());
+    }
+
+    private void pruneModulations(SpaceState space) {
+        List<String> toRemove = space.modulations().entrySet().stream()
+            .filter(e -> e.getValue().isNeutral(space.eventCounter(), 0.001))
+            .map(Map.Entry::getKey)
+            .toList();
+        toRemove.forEach(space::removeModulation);
     }
 
     private void prune(SpaceState space, long currentBucket) {
