@@ -198,6 +198,47 @@ Use cases:
 
 This enables agents to discover non‑obvious connections between entities — useful for proactive suggestions, root‑cause analysis, and planning across multiple domains.
 
+### 5) Modulate attention (suppress or amplify)
+
+Sometimes you need to tell Caudal "stop thinking about X, focus on Y" without erasing the memory of X. Attention modulation lets you suppress or amplify how much an entity appears in query results.
+
+```bash
+# Inline with events (recommended — zero extra latency):
+curl -X POST http://localhost:8080/api/v1/events \
+  -H "Authorization: Bearer <api_key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "space": "user:123",
+    "events": [
+      {"src": "user:123", "dst": "topic:math", "intensity": 3.0}
+    ],
+    "modulations": [
+      {"entity": "topic:bikes", "attention": 0.1, "decay": 50},
+      {"entity": "topic:math", "attention": 3.0, "decay": 50}
+    ]
+  }'
+
+# Or standalone:
+curl -X POST http://localhost:8080/api/v1/modulate \
+  -H "Authorization: Bearer <api_key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "space": "user:123",
+    "modulations": [
+      {"entity": "topic:bikes", "attention": 0.1, "decay": 50}
+    ]
+  }'
+```
+
+| Attention value | Effect |
+|----------------|--------|
+| `0.0` | Fully suppress — entity disappears from results |
+| `0.1` | Strongly suppress — 10% of normal |
+| `1.0` | Normal (resets any modulation) |
+| `3.0` | Triple the score |
+
+The `decay` field controls how many events until the modulation fades to half strength. Omit it for a persistent modulation.
+
 ---
 
 ## Why this improves agents
@@ -231,6 +272,7 @@ Base path: `/api/v1`
 * `GET /focus?space=&k=` — ranked items that matter now
 * `GET /next?space=&src=&k=` — ranked next hops from an entity
 * `POST /pathways` — multi‑hop associations via sampled walks
+* `POST /modulate` — suppress or amplify entity attention
 
 Auth: `Authorization: Bearer <api_key>` (or `Token <api_key>`). Dev mode can disable auth.
 

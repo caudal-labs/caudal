@@ -1,9 +1,12 @@
 package io.caudal.server.controller;
 
 import io.caudal.core.Event;
+import io.caudal.core.Modulation;
 import io.caudal.server.api.EventsApi;
 import io.caudal.server.dto.EventRequest;
 import io.caudal.server.dto.EventResponse;
+import io.caudal.server.dto.ModulateRequest;
+import io.caudal.server.dto.ModulateResponse;
 import io.caudal.server.persistence.PersistenceService;
 import io.caudal.server.service.SpaceManager;
 import io.micrometer.core.instrument.Counter;
@@ -47,7 +50,15 @@ public class EventController implements EventsApi {
                     ))
                     .toList();
 
-            long bucket = spaceManager.applyEvents(request.space(), coreEvents);
+            List<Modulation> coreModulations = null;
+            if (request.modulations() != null && !request.modulations().isEmpty()) {
+                coreModulations = request.modulations().stream()
+                        .map(m -> new Modulation(m.entity(), m.attention(), m.decay(), 0))
+                        .toList();
+            }
+
+            long bucket = spaceManager.applyEventsAndModulations(
+                    request.space(), coreEvents, coreModulations);
 
             persistence.appendWal(request.space(), request.events());
 
@@ -56,5 +67,17 @@ public class EventController implements EventsApi {
             String asOf = spaceManager.clock().toInstant(bucket).toString();
             return ResponseEntity.accepted().body(new EventResponse(coreEvents.size(), asOf));
         });
+    }
+
+    @Override
+    public ResponseEntity<ModulateResponse> modulate(ModulateRequest request) {
+        List<Modulation> coreModulations = request.modulations().stream()
+                .map(m -> new Modulation(m.entity(), m.attention(), m.decay(), 0))
+                .toList();
+
+        spaceManager.applyModulations(request.space(), coreModulations);
+
+        String asOf = spaceManager.clock().toInstant(spaceManager.clock().nowBucket()).toString();
+        return ResponseEntity.ok(new ModulateResponse(coreModulations.size(), asOf));
     }
 }

@@ -24,7 +24,12 @@
       "Bash(docker compose:*)",
       "Bash(docker-compose:*)",
       "Bash(./mvnw test:*)",
-      "Bash(mvn:*)"
+      "Bash(mvn:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Attention modulation: top-down control to suppress or amplify entity relevance
+  - Embedded in POST /events via optional `modulations` field (zero extra latency)
+  - Standalone POST /modulate endpoint
+  - Event-count-based decay (half-life model)
+  - Affects focus, next, and pathways queries
+  - Persisted in snapshots for recovery
 - Core memory engine with decay, reinforcement, ranking, and pruning
 - REST API: POST /events, GET /focus, GET /next, POST /pathways
 - API key authentication (Bearer/Token)

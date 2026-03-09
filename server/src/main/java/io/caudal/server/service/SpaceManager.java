@@ -4,6 +4,7 @@ import io.caudal.core.BucketClock;
 import io.caudal.core.Event;
 import io.caudal.core.FocusItem;
 import io.caudal.core.MemoryEngine;
+import io.caudal.core.Modulation;
 import io.caudal.core.NextHopItem;
 import io.caudal.core.PathwayResult;
 import io.caudal.core.SpaceConfig;
@@ -42,6 +43,33 @@ public class SpaceManager {
             lock.writeLock().unlock();
         }
         return bucket;
+    }
+
+    public long applyEventsAndModulations(String spaceId, List<Event> events, List<Modulation> modulations) {
+        long bucket = clock.nowBucket();
+        ReadWriteLock lock = lockFor(spaceId);
+        lock.writeLock().lock();
+        try {
+            SpaceState space = spaces.computeIfAbsent(spaceId, id -> new SpaceState(id, defaultConfig));
+            engine.applyEvents(space, events, bucket);
+            if (modulations != null && !modulations.isEmpty()) {
+                engine.applyModulations(space, modulations);
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+        return bucket;
+    }
+
+    public void applyModulations(String spaceId, List<Modulation> modulations) {
+        ReadWriteLock lock = lockFor(spaceId);
+        lock.writeLock().lock();
+        try {
+            SpaceState space = spaces.computeIfAbsent(spaceId, id -> new SpaceState(id, defaultConfig));
+            engine.applyModulations(space, modulations);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public List<FocusItem> focus(String spaceId, int k) {

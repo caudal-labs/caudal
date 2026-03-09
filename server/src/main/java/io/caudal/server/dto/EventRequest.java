@@ -7,7 +7,8 @@ import java.util.List;
 
 public record EventRequest(
     @NotBlank String space,
-    @NotEmpty @Valid List<EventItem> events
+    @NotEmpty @Valid List<EventItem> events,
+    @Valid List<ModulationItem> modulations
 ) {
 
     public record EventItem(

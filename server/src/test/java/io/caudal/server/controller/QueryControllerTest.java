@@ -114,6 +114,7 @@ class QueryControllerTest {
             .andReturn().getResponse().getContentAsString();
 
         org.assertj.core.api.Assertions.assertThat(response)
-            .doesNotContain("tau", "pheromone", "alpha", "decayPerBucket", "bucket", "ants", "maxSteps");
+            .doesNotContain("tau", "pheromone", "alpha", "decayPerBucket", "bucket",
+                    "ants", "maxSteps", "eventCounter", "appliedAtEventCount");
     }
 }

@@ -134,6 +134,9 @@
                                 <importMapping>PathwayRequest=io.caudal.server.dto.PathwayRequest</importMapping>
                                 <importMapping>PathwayResponse=io.caudal.server.dto.PathwayResponse</importMapping>
                                 <importMapping>PathItem=io.caudal.server.dto.PathwayResponse.PathItem</importMapping>
+                                <importMapping>ModulationItem=io.caudal.server.dto.ModulationItem</importMapping>
+                                <importMapping>ModulateRequest=io.caudal.server.dto.ModulateRequest</importMapping>
+                                <importMapping>ModulateResponse=io.caudal.server.dto.ModulateResponse</importMapping>
                                 <importMapping>ErrorResponse=java.util.Map</importMapping>
                             </importMappings>
                         </configuration>

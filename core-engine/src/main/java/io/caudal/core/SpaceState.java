@@ -12,12 +12,16 @@ public final class SpaceState {
     private final SpaceConfig config;
     private final Map<EdgeKey, EdgeState> edges;
     private final Map<String, List<EdgeKey>> outgoing;
+    private final Map<String, Modulation> modulations;
+    private long eventCounter;
 
     public SpaceState(String spaceId, SpaceConfig config) {
         this.spaceId = spaceId;
         this.config = config;
         this.edges = new HashMap<>();
         this.outgoing = new HashMap<>();
+        this.modulations = new HashMap<>();
+        this.eventCounter = 0;
     }
 
     public String spaceId() {
@@ -70,5 +74,25 @@ public final class SpaceState {
 
     public Map<String, List<EdgeKey>> outgoing() {
         return Collections.unmodifiableMap(outgoing);
+    }
+
+    public long eventCounter() {
+        return eventCounter;
+    }
+
+    public void incrementEventCounter(int count) {
+        this.eventCounter += count;
+    }
+
+    public Map<String, Modulation> modulations() {
+        return Collections.unmodifiableMap(modulations);
+    }
+
+    public void putModulation(Modulation mod) {
+        modulations.put(mod.entity(), mod);
+    }
+
+    public void removeModulation(String entity) {
+        modulations.remove(entity);
     }
 }

@@ -292,4 +292,180 @@ class MemoryEngineTest {
             assertThat(restoredFocus).isEqualTo(originalFocus);
         }
     }
+
+    // --- Modulation ---
+
+    @Nested
+    class ModulationTests {
+
+        @Test
+        void modulation_suppressesEntityInFocus() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(
+                    new Event("a", "bikes", 5.0),
+                    new Event("a", "math", 5.0)
+            ), 0);
+
+            List<FocusItem> before = engine.focus(space, 10, 0);
+            double bikesScoreBefore = before.stream()
+                    .filter(i -> i.id().equals("bikes")).findFirst().get().score();
+            double mathScoreBefore = before.stream()
+                    .filter(i -> i.id().equals("math")).findFirst().get().score();
+            assertThat(bikesScoreBefore).isCloseTo(mathScoreBefore, within(1e-10));
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 0.1, 0, 0)
+            ));
+
+            List<FocusItem> after = engine.focus(space, 10, 0);
+            double bikesScoreAfter = after.stream()
+                    .filter(i -> i.id().equals("bikes")).findFirst().get().score();
+            double mathScoreAfter = after.stream()
+                    .filter(i -> i.id().equals("math")).findFirst().get().score();
+
+            assertThat(bikesScoreAfter).isCloseTo(bikesScoreBefore * 0.1, within(1e-10));
+            assertThat(mathScoreAfter).isCloseTo(mathScoreBefore, within(1e-10));
+        }
+
+        @Test
+        void modulation_amplifiesEntityInFocus() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(new Event("a", "math", 2.0)), 0);
+
+            double scoreBefore = engine.focus(space, 10, 0).stream()
+                    .filter(i -> i.id().equals("math")).findFirst().get().score();
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("math", 3.0, 0, 0)
+            ));
+
+            double scoreAfter = engine.focus(space, 10, 0).stream()
+                    .filter(i -> i.id().equals("math")).findFirst().get().score();
+
+            assertThat(scoreAfter).isCloseTo(scoreBefore * 3.0, within(1e-10));
+        }
+
+        @Test
+        void modulation_decaysTowardNeutral() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(new Event("a", "bikes", 5.0)), 0);
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 0.0, 10, 0)
+            ));
+
+            // Apply 10 more events to advance event counter by 10
+            engine.applyEvents(space, List.of(
+                    new Event("x", "y", 1.0), new Event("x", "y", 1.0),
+                    new Event("x", "y", 1.0), new Event("x", "y", 1.0),
+                    new Event("x", "y", 1.0), new Event("x", "y", 1.0),
+                    new Event("x", "y", 1.0), new Event("x", "y", 1.0),
+                    new Event("x", "y", 1.0), new Event("x", "y", 1.0)
+            ), 0);
+
+            Modulation mod = space.modulations().values().stream()
+                    .filter(m -> m.entity().equals("bikes")).findFirst().orElseThrow();
+            double eff = mod.effectiveAttention(space.eventCounter());
+            // appliedAtEventCount = 1 (after first event), currentEventCount = 11, delta = 10
+            assertThat(eff).isCloseTo(0.5, within(1e-10));
+        }
+
+        @Test
+        void modulation_resetWithAttentionOne() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(new Event("a", "bikes", 5.0)), 0);
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 0.1, 0, 0)
+            ));
+            assertThat(space.modulations()).containsKey("bikes");
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 1.0, 0, 0)
+            ));
+            assertThat(space.modulations()).doesNotContainKey("bikes");
+        }
+
+        @Test
+        void modulation_affectsNextHop() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(
+                    new Event("a", "bikes", 5.0),
+                    new Event("a", "math", 5.0)
+            ), 0);
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 0.0, 0, 0)
+            ));
+
+            List<NextHopItem> items = engine.next(space, "a", 10, 0);
+            assertThat(items).noneMatch(i -> i.id().equals("bikes"));
+            assertThat(items).anyMatch(i -> i.id().equals("math"));
+        }
+
+        @Test
+        void modulation_affectsPathways() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(
+                    new Event("a", "bikes", 100.0),
+                    new Event("a", "math", 1.0)
+            ), 0);
+
+            PathwayResult r1 = engine.pathways(space, "a", 100, 1, 10, 42L, 0);
+            assertThat(r1.topEntities().getFirst().id()).isEqualTo("bikes");
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 0.0, 0, 0)
+            ));
+
+            PathwayResult r2 = engine.pathways(space, "a", 100, 1, 10, 42L, 0);
+            assertThat(r2.topEntities()).allMatch(e -> !e.id().equals("bikes"));
+        }
+
+        @Test
+        void modulation_persistsInSnapshot() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(new Event("a", "b", 1.0)), 0);
+            engine.applyModulations(space, List.of(
+                    new Modulation("b", 2.5, 100, 0)
+            ));
+
+            SpaceSnapshot snap = engine.snapshot(space, 0);
+            SpaceState restored = engine.restore(snap, SpaceConfig.DEFAULT);
+
+            assertThat(restored.modulations()).containsKey("b");
+            assertThat(restored.eventCounter()).isEqualTo(space.eventCounter());
+
+            List<FocusItem> originalFocus = engine.focus(space, 10, 0);
+            List<FocusItem> restoredFocus = engine.focus(restored, 10, 0);
+            assertThat(restoredFocus).isEqualTo(originalFocus);
+        }
+
+        @Test
+        void modulation_zeroAttention_fullyIgnoresEntity() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            engine.applyEvents(space, List.of(new Event("a", "bikes", 10.0)), 0);
+
+            engine.applyModulations(space, List.of(
+                    new Modulation("bikes", 0.0, 0, 0)
+            ));
+
+            List<FocusItem> items = engine.focus(space, 10, 0);
+            assertThat(items).noneMatch(i -> i.id().equals("bikes"));
+        }
+
+        @Test
+        void eventCounter_incrementsByEventCount() {
+            SpaceState space = new SpaceState("test", SpaceConfig.DEFAULT);
+            assertThat(space.eventCounter()).isEqualTo(0);
+
+            engine.applyEvents(space, List.of(
+                    new Event("a", "b", 1.0),
+                    new Event("c", "d", 1.0),
+                    new Event("e", "f", 1.0)
+            ), 0);
+
+            assertThat(space.eventCounter()).isEqualTo(3);
+        }
+    }
 }

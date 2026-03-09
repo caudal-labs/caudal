@@ -5,8 +5,14 @@ import java.util.List;
 public record SpaceSnapshot(
         String spaceId,
         long bucket,
-        List<EdgeData> edges
+        List<EdgeData> edges,
+        List<ModulationData> modulations,
+        long eventCounter
 ) {
+
+    public SpaceSnapshot(String spaceId, long bucket, List<EdgeData> edges) {
+        this(spaceId, bucket, edges, List.of(), 0);
+    }
 
     public record EdgeData(
             String src,
@@ -14,5 +20,12 @@ public record SpaceSnapshot(
             double score,
             long lastUpdatedBucket,
             long rawCount
+    ) {}
+
+    public record ModulationData(
+            String entity,
+            double attention,
+            long decay,
+            long appliedAtEventCount
     ) {}
 }
