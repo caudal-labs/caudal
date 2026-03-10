@@ -482,11 +482,12 @@ components:
           type: number
           format: double
           default: 1.0
+          exclusiveMinimum: 0
           description: |
             Reinforcement intensity of this event — how impactful or
             memorable it is. Higher values cause the edge to gain more
             relevance per event. Typical range is `0.1` to `10.0`.
-            Defaults to `1.0` if omitted or non-positive.
+            Must be greater than zero. Defaults to `1.0` if omitted.
           example: 2.0
         type:
           type: string
