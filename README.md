@@ -1,6 +1,6 @@
 # Caudal
 
-> **Caudal is a temporal relevance memory for AI agents.**
+> **Caudal is an attention engine for AI agents.**
 > It tells an agent what matters *right now*.
 
 Modern agents have tools, vector search, and long‑term storage — but they still behave strangely:
