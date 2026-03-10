@@ -193,4 +193,43 @@ class EventControllerTest {
             .andExpect(jsonPath("$.items[0].score").isNumber())
             .andExpect(jsonPath("$.asOf").isNotEmpty());
     }
+
+    @Test
+    void ingestEvents_negativeIntensity_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                  {
+                    "space": "test",
+                    "events": [{"src": "a", "dst": "b", "intensity": -1.0}]
+                  }
+                  """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void ingestEvents_zeroIntensity_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                  {
+                    "space": "test",
+                    "events": [{"src": "a", "dst": "b", "intensity": 0.0}]
+                  }
+                  """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void ingestEvents_nullIntensity_defaultsToOne() throws Exception {
+        mockMvc.perform(post("/api/v1/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                  {
+                    "space": "null-intensity-test",
+                    "events": [{"src": "a", "dst": "b"}]
+                  }
+                  """))
+                .andExpect(status().isAccepted());
+    }
 }
