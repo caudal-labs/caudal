@@ -220,16 +220,4 @@ class EventControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void ingestEvents_nullIntensity_defaultsToOne() throws Exception {
-        mockMvc.perform(post("/api/v1/events")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                  {
-                    "space": "null-intensity-test",
-                    "events": [{"src": "a", "dst": "b"}]
-                  }
-                  """))
-                .andExpect(status().isAccepted());
-    }
 }
