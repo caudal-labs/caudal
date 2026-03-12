@@ -23,6 +23,8 @@ No heuristics.
 
 Just behavior → relevance.
 
+**Documentation:** [caudal-labs.com](https://www.caudal-labs.com/)
+
 ---
 
 ## What Caudal is
