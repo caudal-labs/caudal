@@ -87,7 +87,7 @@ jobs:
 
       - name: Build image with Buildpacks (versioned tag)
         run: >
-          mvn -pl server spring-boot:build-image -B -DskipTests
+          mvn -pl server -am spring-boot:build-image -B -DskipTests
           -Ddocker.image.tag=${{ github.event.release.tag_name }}
 
       - name: Tag latest
