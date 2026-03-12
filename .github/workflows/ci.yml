@@ -85,8 +85,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install core-engine
-        run: mvn install -pl core-engine -B -DskipTests
+      - name: Install parent and core-engine
+        run: mvn install -B -DskipTests -pl core-engine -am
 
       - name: Build image with Buildpacks (versioned tag)
         run: >
