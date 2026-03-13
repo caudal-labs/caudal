@@ -1,21 +1,13 @@
 package io.caudal.server.service;
 
-import io.caudal.core.BucketClock;
-import io.caudal.core.Event;
-import io.caudal.core.FocusItem;
-import io.caudal.core.MemoryEngine;
-import io.caudal.core.Modulation;
-import io.caudal.core.NextHopItem;
-import io.caudal.core.PathwayResult;
-import io.caudal.core.SpaceConfig;
-import io.caudal.core.SpaceSnapshot;
-import io.caudal.core.SpaceState;
+import io.caudal.core.*;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.springframework.stereotype.Service;
 
 @Service
 public class SpaceManager {
@@ -145,6 +137,16 @@ public class SpaceManager {
 
     public List<String> spaceIds() {
         return List.copyOf(spaces.keySet());
+    }
+
+    public SpaceState getSpaceState(String spaceId) {
+        ReadWriteLock lock = lockFor(spaceId);
+        lock.readLock().lock();
+        try {
+            return spaces.get(spaceId);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public BucketClock clock() {

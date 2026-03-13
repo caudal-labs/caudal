@@ -3,18 +3,18 @@ package io.caudal.server.controller;
 import io.caudal.core.FocusItem;
 import io.caudal.core.NextHopItem;
 import io.caudal.core.PathwayResult;
+import io.caudal.core.SpaceState;
 import io.caudal.server.CaudalProperties;
 import io.caudal.server.api.QueriesApi;
-import io.caudal.server.dto.FocusResponse;
-import io.caudal.server.dto.PathwayRequest;
-import io.caudal.server.dto.PathwayResponse;
+import io.caudal.server.dto.*;
 import io.caudal.server.service.SpaceManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -79,5 +79,20 @@ public class QueryController implements QueriesApi {
                     asOf
             ));
         });
+    }
+
+    @Override
+    public ResponseEntity<SpacesResponse> spaces() {
+        List<String> spaceIds = spaceManager.spaceIds();
+        List<SpaceItem> spaceItems = spaceIds.stream()
+                .map(spaceId -> {
+                    SpaceState state = spaceManager.getSpaceState(spaceId);
+                    int entityCount = state.entityCount();
+                    int edgeCount = state.edgeCount();
+                    long eventCount = state.eventCounter();
+                    return new SpaceItem(spaceId, entityCount, edgeCount, eventCount);
+                }).toList();
+        String asOf = spaceManager.clock().toInstant(spaceManager.clock().nowBucket()).toString();
+        return ResponseEntity.ok(new SpacesResponse(spaceItems, asOf));
     }
 }

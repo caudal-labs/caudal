@@ -1,10 +1,6 @@
 package io.caudal.core;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class SpaceState {
 
@@ -94,5 +90,14 @@ public final class SpaceState {
 
     public void removeModulation(String entity) {
         modulations.remove(entity);
+    }
+
+    public int entityCount() {
+        Set<String> entities = new HashSet<>();
+        for (EdgeKey key : edges.keySet()) {
+            entities.add(key.src());
+            entities.add(key.dst());
+        }
+        return entities.size();
     }
 }
