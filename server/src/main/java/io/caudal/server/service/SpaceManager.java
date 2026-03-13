@@ -143,6 +143,17 @@ public class SpaceManager {
         }
     }
 
+    public boolean deleteSpace(String spaceId) {
+        ReadWriteLock lock = lockFor(spaceId);
+        lock.writeLock().lock();
+        try {
+            return spaces.remove(spaceId) != null;
+        } finally {
+            lock.writeLock().unlock();
+            locks.remove(spaceId);
+        }
+    }
+
     public List<String> spaceIds() {
         return List.copyOf(spaces.keySet());
     }
