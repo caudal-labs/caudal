@@ -125,6 +125,12 @@ public class PersistenceService {
             spaceId, Timestamp.from(before));
     }
 
+    public void deleteSpaceData(String spaceId) {
+        jdbc.update("DELETE FROM event_log WHERE space_id = ?", spaceId);
+        jdbc.update("DELETE FROM snapshots WHERE space_id = ?", spaceId);
+        log.info("Deleted all persistence data for space={}", spaceId);
+    }
+
     private String toJson(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);

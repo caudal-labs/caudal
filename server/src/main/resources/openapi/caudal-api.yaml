@@ -61,11 +61,61 @@ tags:
       Read the current state of a space's memory. All query endpoints are
       read-only, lock-free for concurrent callers, and reflect the most
       recent ingested events.
+  - name: Spaces
+    description: |
+      Lifecycle management for spaces. Spaces are normally created
+      implicitly on first event ingestion. This tag provides explicit
+      control over space deletion.
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 paths:
+
+  # -------------------------------------------------------
+  # DELETE /spaces/{id}
+  # -------------------------------------------------------
+  /spaces/{id}:
+    delete:
+      operationId: deleteSpace
+      tags: [Spaces]
+      summary: Delete a space
+      description: |
+        Permanently removes a space from memory and deletes all associated
+        WAL entries and snapshots from the database.
+
+        The space will not be resurrected on server restart. Any future
+        events referencing the same space ID will create a fresh space
+        with no prior history.
+
+        Returns `404` if the space does not currently exist in memory.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: |
+            The space identifier to delete (e.g. `user:old-session`,
+            `project:my-app`).
+          schema:
+            type: string
+            minLength: 1
+          example: "user:old-session"
+      responses:
+        '200':
+          description: |
+            Space successfully deleted. Returns the deleted space ID and
+            the server timestamp at which deletion occurred.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteSpaceResponse'
+              example:
+                deleted: "user:old-session"
+                asOf: "2026-03-09T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   # -------------------------------------------------------
   # POST /events
@@ -411,6 +461,15 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
           example:
             error: "Unauthorized"
+    NotFound:
+      description: |
+        The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Space not found: user:old-session"
 
   # ----- Schemas -----
   schemas:
@@ -785,6 +844,24 @@ components:
           description: |
             ISO-8601 instant representing the current server timestamp.
           example: "2026-02-28T10:05:00Z"
+
+    # === Space lifecycle ===
+
+    DeleteSpaceResponse:
+      type: object
+      description: |
+        Confirmation returned after a space is successfully deleted.
+      properties:
+        deleted:
+          type: string
+          description: |
+            The identifier of the space that was deleted.
+          example: "user:old-session"
+        asOf:
+          type: string
+          description: |
+            ISO-8601 instant at which the deletion was performed.
+          example: "2026-03-09T12:00:00Z"
 
     # === Errors ===
 
