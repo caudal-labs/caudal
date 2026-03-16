@@ -10,13 +10,12 @@ import io.caudal.core.PathwayResult;
 import io.caudal.core.SpaceConfig;
 import io.caudal.core.SpaceSnapshot;
 import io.caudal.core.SpaceState;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SpaceManager {
