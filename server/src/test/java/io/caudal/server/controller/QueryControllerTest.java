@@ -1,11 +1,5 @@
 package io.caudal.server.controller;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import io.caudal.server.CaudalApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +8,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
     classes = CaudalApplication.class,
@@ -116,5 +117,32 @@ class QueryControllerTest {
         org.assertj.core.api.Assertions.assertThat(response)
             .doesNotContain("tau", "pheromone", "alpha", "decayPerBucket", "bucket",
                     "ants", "maxSteps", "eventCounter", "appliedAtEventCount");
+    }
+
+    @Test
+    void spaces_returnsSpaceSummaries() throws Exception {
+
+        mockMvc.perform(post("/api/v1/events")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+            {
+              "space": "qtest-spaces",
+              "events": [
+                {"src": "a", "dst": "b", "intensity": 3.0},
+                {"src": "a", "dst": "c", "intensity": 1.0},
+                {"src": "b", "dst": "d", "intensity": 2.0}
+              ]
+            }
+        """));
+
+        mockMvc.perform(get("/api/v1/spaces"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.spaces").isArray())
+            .andExpect(jsonPath("$.spaces[*].space")
+                    .value(hasItem("qtest-spaces")))
+            .andExpect(jsonPath("$.spaces[?(@.space=='qtest-spaces')].entityCount").value(4))
+            .andExpect(jsonPath("$.spaces[?(@.space=='qtest-spaces')].edgeCount").value(3))
+            .andExpect(jsonPath("$.spaces[?(@.space=='qtest-spaces')].eventCount").value(3))
+            .andExpect(jsonPath("$.asOf").isString());
     }
 }

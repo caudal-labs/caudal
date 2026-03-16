@@ -434,6 +434,43 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  # -------------------------------------------------------
+  # GET /spaces
+  # -------------------------------------------------------
+  /spaces:
+    get:
+      operationId: spaces
+      tags: [ Queries ]
+      summary: List all known spaces in this Caudal instance
+      description: |
+        Returns all active spaces in this running Caudal instance with
+        basic statistics. Use this for operational visibility, dashboards,
+        and debugging — an admin client no longer needs to know space names
+        in advance.
+      responses:
+        '200':
+          description: |
+            All known spaces with their current entity, edge, and event
+            counters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpacesResponse'
+              example:
+                spaces:
+                  - id: "user:123"
+                    entityCount: 42
+                    edgeCount: 187
+                    eventCount: 1053
+                  - id: "user:456"
+                    entityCount: 42
+                    edgeCount: 187
+                    eventCount: 1053
+                asOf: "2026-03-09T12:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+
 # ---------------------------------------------------------------------------
 # Components
 # ---------------------------------------------------------------------------
@@ -862,6 +899,49 @@ components:
           description: |
             ISO-8601 instant at which the deletion was performed.
           example: "2026-03-09T12:00:00Z"
+
+    # === Spaces ===
+    SpacesResponse:
+      type: object
+      description: |
+        List of all known spaces in the Caudal instance with basic statistics.
+      properties:
+        spaces:
+          type: array
+          description: |
+            All currently known spaces.
+          items:
+            $ref: '#/components/schemas/SpaceItem'
+        asOf:
+          type: string
+          description: |
+            ISO-8601 instant representing when these statistics were captured.
+          example: "2026-03-09T12:00:00Z"
+
+    SpaceItem:
+      type: object
+      description: |
+        Summary statistics for a single space.
+      properties:
+        space:
+          type: string
+          description: Space identifier
+          example: "user:123"
+        entityCount:
+          type: integer
+          format: int32
+          description: Number of unique entities in the space
+          example: 42
+        edgeCount:
+          type: integer
+          format: int32
+          description: Number of directed edges
+          example: 187
+        eventCount:
+          type: integer
+          format: int64
+          description: Total ingested events
+          example: 1053
 
     # === Errors ===
 
