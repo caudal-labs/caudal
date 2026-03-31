@@ -17,7 +17,7 @@ javac --release 21 -d out src/caudal/examples/CaudalDemo.java
 java -cp out caudal.examples.CaudalDemo
 
 # Or with environment variables
-CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme java -cp caudal/examples caudal.examples.CaudalDemo
+CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme java -cp out caudal.examples.CaudalDemo
 ```
 
 ## Configuration

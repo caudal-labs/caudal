@@ -14,13 +14,13 @@ A Python implementation of the Caudal API demo using the `requests` library.
 pip install requests
 
 # Run with defaults
-python caudal/examples/python/CaudalDemo.py
+python examples/python/CaudalDemo.py
 
 # Or with arguments
-python caudal/examples/python/CaudalDemo.py http://localhost:8080 changeme
+python examples/python/CaudalDemo.py http://localhost:8080 changeme
 
 # Or with environment variables
-CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme python caudal/examples/python/CaudalDemo.py
+CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme python examples/python/CaudalDemo.py
 ```
 Or with [uv](https://docs.astral.sh/uv/getting-started/installation/):
 

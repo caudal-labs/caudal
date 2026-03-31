@@ -13,13 +13,13 @@ JavaScript and TypeScript implementations of the Caudal API demo using native `f
 
 ```bash
 # Run with defaults
-node caudal/examples/js/CaudalDemo.js
+node examples/js/CaudalDemo.js
 
 # Or with arguments
-node caudal/examples/js/CaudalDemo.js http://localhost:8080 changeme
+node examples/js/CaudalDemo.js http://localhost:8080 changeme
 
 # Or with environment variables
-CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme node caudal/examples/js/CaudalDemo.js
+CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme node examples/js/CaudalDemo.js
 ```
 
 ### TypeScript
@@ -29,13 +29,13 @@ CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme node caudal/examples/js
 npm install --save-dev typescript @types/node tsx
 
 # Run with defaults
-npx tsx caudal/examples/js/CaudalDemo.ts
+npx tsx examples/js/CaudalDemo.ts
 
 # Or with arguments
-npx tsx caudal/examples/js/CaudalDemo.ts http://localhost:8080 changeme
+npx tsx examples/js/CaudalDemo.ts http://localhost:8080 changeme
 
 # Or with environment variables
-CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme npx tsx caudal/examples/js/CaudalDemo.ts
+CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme npx tsx examples/js/CaudalDemo.ts
 ```
 
 ## Configuration

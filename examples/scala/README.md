@@ -10,10 +10,10 @@ A Scala 3 implementation of the Caudal API demo using [scala-cli](https://scala-
 
 ```bash
 # Run with defaults (http://localhost:8080, API key: changeme)
-scala-cli run CaudalDemo.scala
+scala-cli run examples/scala/CaudalDemo.scala
 
 # Or with environment variables
-CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme scala-cli run CaudalDemo.scala
+CAUDAL_URL=http://localhost:8080 CAUDAL_API_KEY=changeme scala-cli run examples/scala/CaudalDemo.scala
 ```
 
 ## Configuration
