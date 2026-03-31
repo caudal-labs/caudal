@@ -39,3 +39,12 @@ logs/
 
 # === Spring Boot ===
 spring-shell.log
+
+# === Examples build artifacts ===
+examples/scala/.bsp/
+examples/scala/.scala-build/
+examples/scala/.bloop/
+examples/java/out/
+examples/python/__pycache__/
+examples/js/node_modules/
+examples/js/dist/
